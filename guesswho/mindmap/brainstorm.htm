@@ -13,16 +13,37 @@
   -- blah ---
 -->
 <div class="mermaid">
-graph TD;
+graph LR;
     A[Who Are You? Game] --> B[Target User]
         B --> C[Young Children]
-        B --> C2[Older Ones - Advanced Option - Statistics View]
-        C --> D[Needs Simple Interface - Drag/Drop face bits?]
+        B --> C2[Non-Kids]
+        C2 --> C3[Advanced Opts<br/>Stato View]
+        C2 --> C4[Complex Questions - Moustache or Beard or Red Hair]
+        C --> D[Simple UI<br/>Drag Drop, Touch Interface]
+        D --> D1[Simple Questions<br/>Red Hair? Mustache?]
     A --> E[Face Generation]
-    E --> F{Fixed Layout?}
-    F --> G[No > a bit boring?]
-    E --> H[Faces by Ran-Gen]
-    H --> I[Yeah! More fun...]
+        E --> F(Fixed Layout<br/>Fixed Images / People)
+            F --> G(Boring?)
+        E --> H[Faces by Rand-Gen]
+            H --> I[Yeah - Fun!<br/>_Tagline - 2^20s of possibilities..._]
+            H --> H1[Graphics = SVG<br/>Compose / Merge pieces]
+            H1 --> H2[Web version a possibility]
+    A --> J[Players?]
+        J --> J1[1up v CPU]
+            J1 --> J0[Easiest to implement]
+            J0 --> J2[Algorithm is straightforward<br/>Levels - Hard / Med / Easy]
+        J --> J3[1up v 2up]
+            J3 --> J4[FUTURE - net play?]
+                J4 --> J5[LAN<br/>Run webserver<br/>1up=server 2up=client]
+                J4 --> J6[WAN?<br/>Do free game servers exist?]
+</div>
+<div class="mermaid">
+graph LR;
+    K[Dev Questions] --> Kpx[Cross Platform]
+    Kpx --> K1[Qt]
+    Kpx --> K2[Creative Coding]
+        K2 --> K3[openFrameworks]
+        K2 --> K4[Cinder]
 </div>
 </body>
 </html>
