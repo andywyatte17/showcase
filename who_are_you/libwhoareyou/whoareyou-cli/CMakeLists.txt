@@ -1,0 +1,5 @@
+project(whoareyou-cli)
+cmake_minimum_required(VERSION 2.8)
+set(SRC_LIST "main.cpp"  "people.h"  "optional.h"  "people.cpp")
+SET(CMAKE_CXX_FLAGS "-std=c++11 -g")
+add_executable(${PROJECT_NAME} ${SRC_LIST})
