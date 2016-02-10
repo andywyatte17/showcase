@@ -4,25 +4,20 @@
 
 #include "people.h"
 #include <random>
-#include <mutex>
 
 using namespace whoareyou;
 
-namespace
-{
-std::once_flag g_of;
-}
-
 Names_t whoareyou::names()
 {
-  static Names_t s_names;
-  std::call_once(g_of, []() {
-    auto names = std::vector<std::string>{"Simon",  "Sarah", "Tracy",  "Stan",
-                                          "Barry",  "Brian", "Laura",  "Colin",
-                                          "Trevor", "Terry", "Sam",    "Bill",
-                                          "David",  "Steve", "Rachel", "Grace"};
-    s_names.reset( new std::vector<std::string>( std::move(names) ) );
-  });
+  // I did want to protect static construction here with std::call_once
+  //   but it crashed on this compile. Should be protected by C++11 'magic
+  //   statics'
+  //   when implemented.
+  static Names_t s_names
+      = std::make_shared<std::vector<std::string>>(std::vector<std::string>{
+          "Simon", "Sarah", "Tracy", "Stan", "Barry", "Brian", "Laura", "Colin",
+          "Trevor", "Terry", "Sam", "Bill", "David", "Steve", "Rachel",
+          "Grace"});
   return s_names;
 }
 
@@ -33,6 +28,13 @@ template <typename E, typename Rand> auto RandomOfEnum(Rand &r) -> E
   auto ix
       = std::uniform_int_distribution<>(0, static_cast<int>(E::_count_) - 1)(r);
   return static_cast<E>(ix);
+}
+
+template <typename E, typename Rand>
+auto RandomOf(Rand &r, std::initializer_list<E> e) -> E
+{
+  auto ix = std::uniform_int_distribution<>(0, e.size() - 1)(r);
+  return *std::next(e.begin(), ix);
 }
 
 template <typename E>
@@ -53,9 +55,11 @@ std::ostream &EnumMap(std::ostream &o, E e,
 std::ostream &whoareyou::operator<<(std::ostream &o, const FaceFeature &v)
 {
   using T = FaceFeature;
-  static_assert(static_cast<int>(T::_count_) == 3, "...");
-  return EnumMap(o, v,
-                 {{T::hair, "hair"}, {T::nose, "nose"}, {T::mouth, "mouth"}});
+  static_assert(static_cast<int>(T::_count_) == 4, "...");
+  return EnumMap(o, v, {{T::eyes, "eyes"},
+                        {T::hair, "hair"},
+                        {T::nose, "nose"},
+                        {T::mouth, "mouth"}});
 }
 
 std::ostream &whoareyou::operator<<(std::ostream &o, const Size &v)
@@ -104,6 +108,8 @@ whoareyou::RandomPersonFactory(optional<uint32_t> seed)
       p.features.push_back(Feature::MakeFace(RandomOfEnum<Colour>(mt)));
       p.features.push_back(Feature::MakeNose(RandomOfEnum<Size>(mt)));
       p.features.push_back(Feature::MakeMouth(RandomOfEnum<Size>(mt)));
+      p.features.push_back(Feature::MakeEyes(
+          RandomOf<Colour>(mt, {Colour::blue, Colour::brown})));
       return p;
     }
   };
@@ -113,14 +119,14 @@ whoareyou::RandomPersonFactory(optional<uint32_t> seed)
 std::ostream &whoareyou::operator<<(std::ostream &o,
                                     const whoareyou::Person &person)
 {
-  o << person.name << " - ";
+  o << person.name << " : ";
   for (auto &x : person.features) {
     o << x.feature;
     if (x.size)
-      o << "," << *x.size;
+      o << " " << *x.size;
     if (x.colour)
-      o << "," << *x.colour;
+      o << " " << *x.colour;
+    o << ", ";
   }
-  o << std::endl;
   return o;
 }

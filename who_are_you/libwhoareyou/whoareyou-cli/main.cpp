@@ -11,6 +11,9 @@ int main()
 {
   using namespace whoareyou;
   auto f = RandomPersonFactory();
-  std::cout << f->create();
+  std::cout << f->create() << std::endl;
+  std::cout << f->create() << std::endl;
+  std::cout << f->create() << std::endl;
+  std::cout << f->create() << std::endl;
   return 0;
 }

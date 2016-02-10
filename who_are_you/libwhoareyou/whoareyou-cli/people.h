@@ -17,6 +17,7 @@ using utf8str_t = std::string;
 using Names_t = std::shared_ptr<const std::vector<utf8str_t>>;
 
 enum class FaceFeature {
+  eyes,
   hair,
   nose,
   mouth,
@@ -49,6 +50,13 @@ struct Feature {
     rv.colour = colour;
     return rv;
   }
+  static Feature MakeEyes(Colour colour)
+  {
+    auto rv = Feature{};
+    rv.feature = FaceFeature::eyes;
+    rv.colour = colour;
+    return rv;
+  }
   static Feature MakeNose(Size size)
   {
     auto rv = Feature{};
@@ -73,10 +81,10 @@ class Person
   std::vector<Feature> features;
 };
 
-std::ostream& operator<<(std::ostream&, const Person& person);
-std::ostream& operator<<(std::ostream&, const FaceFeature& v);
-std::ostream& operator<<(std::ostream&, const Size& v);
-std::ostream& operator<<(std::ostream&, const Colour& v);
+std::ostream &operator<<(std::ostream &, const Person &person);
+std::ostream &operator<<(std::ostream &, const FaceFeature &v);
+std::ostream &operator<<(std::ostream &, const Size &v);
+std::ostream &operator<<(std::ostream &, const Colour &v);
 
 struct OutOfNamesException {
 };
