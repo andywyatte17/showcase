@@ -69,7 +69,7 @@ class Rect : public IDrawObj, public IEvents
     } else {
       float ani_mid = this->animating_start_time + animate_duration / 2;
       auto time_from_mid = time - ani_mid;
-      if (time_from_mid < 0)
+      if ((time_from_mid < 0) ^ (animating == EAnimating::to_visible))
         BackgroundToGray();
       else
         BackgroundToYellow();
