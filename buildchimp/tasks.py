@@ -17,7 +17,7 @@ while p <= n:
 print("Done")
 '''
 
-def MsBuildTask(parent, tabsType, tabs_ix, configuration):
+def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
     '''
         tabsType is 'TabsType' - edit/label/textread/lastlines
         ...
@@ -28,7 +28,7 @@ def MsBuildTask(parent, tabsType, tabs_ix, configuration):
     proc.readyReadStandardError.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
     proc.finished.connect( lambda x : parent.write_process_output(proc, True, line_flush, tabs_ix) )
     proc.start("msbuild",
-            [R"""D:\Projects\Vemnet068\7d\trunk\CommonCode\BuildAll\WinProj\BuildCommonCode.sln""",
+            [sln,
             "/t:Rebuild",
             "/p:Configuration={}".format(configuration)])
     return proc

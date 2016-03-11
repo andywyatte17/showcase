@@ -7,20 +7,28 @@ from PySide.QtCore import Qt
 from test_scripts import PY_SCRIPT_PRIMES_TO_N
 from threading import Lock
 from PySide.QtGui import QStandardItem, QStandardItemModel
-import testtasks
+import tasks
 from tabstype import *
+
+class ScopeGuard:
+    def __init__(self, action):
+        self.action = action
+    def __enter__(self):
+        return self
+    def __exit__(self, x_type, x_value, x_traceback ):
+        self.action()
 
 class MainWnd(QtGui.QMainWindow):
     
     def __init__(self):
         super(MainWnd, self).__init__()
         self.tabs = []    # list of TabsType objects (namedtuples)
-        self.processes = []
         self.filter = None
         self.treeView, self.treeViewModel = None,None
         self.text_change_mutex = Lock()
         self.paused = False
         self.tabCtrl = None
+        self.proc_terminated = False
         self.initUI()
 
     def initUI(self):
@@ -45,7 +53,7 @@ class MainWnd(QtGui.QMainWindow):
         top.addWidget( btn )
         
         for label,str in ( ("error(s)","error(s)"), ("warning(s)","warning(s)"),
-                            ("building","building"), ("Warning:", "Warning:"),
+                            ("building","building"), (" vs warning ", "warning "),
                             ("{}",None) ):
             btn = QtGui.QPushButton(label)
             btn.setMaximumWidth(100)
@@ -83,7 +91,7 @@ class MainWnd(QtGui.QMainWindow):
                              'font-size: 10px;')
             return rv
 
-        tt = TabsType(edit=StyledTextEdit(), label=label, textread="", lastlines=-1)
+        tt = TabsType(edit=StyledTextEdit(), label=label, textread="", lastlines=-1, qprocess=None)
         self.tabs.append(tt)
         tab_ix = len(self.tabs)-1
         self.tabCtrl.addTab( tt.edit, tt.label)
@@ -97,10 +105,10 @@ class MainWnd(QtGui.QMainWindow):
 
         actions = []
         for label, cut, action_fn in (
-                                     ("MsBuild Debug", "Ctrl+1", self.run_msbuild_debug),
-                                     ("MsBuild Release", "Ctrl+2", self.run_msbuild_release),
+                                     ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
+                                     ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
                                      ("Python Primes", "Ctrl+3", self.run_python),
-                                     ("Exit", "Ctrl+Q", self.close)
+                                     ("Exit", "Ctrl+Q", self.warned_close)
                                    ):
             action = QtGui.QAction(label, self)
             action.setShortcut(cut)
@@ -118,23 +126,25 @@ class MainWnd(QtGui.QMainWindow):
         self.setWindowTitle('BuildChimp')    
         self.show()        
 
-    def run_msbuild_debug(self):
-        tabs_ix = self.enqueue_tab("MsBuild_Debug")
+    def run_msbuild_cc_dbx(self):
+        sln = R"""D:\Projects\Vemnet068\7d\trunk\CommonCode\BuildAll\WinProj\BuildCommonCode.sln"""
+        tabs_ix = self.enqueue_tab("MsBuild CC Dbx")
         self.tabs[tabs_ix] = ClearText(self.tabs[tabs_ix])
-        proc = testtasks.MsBuildTask(self, self.tabs[tabs_ix], tabs_ix, "Debug")
-        self.processes.append(proc)
+        proc = tasks.MsBuildTask(self, self.tabs[tabs_ix], tabs_ix, sln, "Debug")
+        self.tabs[tabs_ix] = self.tabs[tabs_ix]._replace(qprocess=proc)
 
-    def run_msbuild_release(self):
-        tabs_ix = self.enqueue_tab("MsBuild_Release")
+    def run_msbuild_exes_dbx(self):
+        sln = R"""D:\Projects\Vemnet068\7d\trunk\Applications\AllExes\AllExes.sln"""
+        tabs_ix = self.enqueue_tab("MsBuild Exes Dbx")
         self.tabs[tabs_ix] = ClearText(self.tabs[tabs_ix])
-        proc = testtasks.MsBuildTask(self, self.tabs[tabs_ix], tabs_ix, "Release")
-        self.processes.append(proc)
+        proc = tasks.MsBuildTask(self, self.tabs[tabs_ix], tabs_ix, sln, "Debug")
+        self.tabs[tabs_ix] = self.tabs[tabs_ix]._replace(qprocess=proc)
         
     def run_python(self):
         tabs_ix = self.enqueue_tab("Python Primes")
         self.tabs[tabs_ix] = ClearText(self.tabs[tabs_ix])
-        proc = testtasks.PythonPrimesTask(self, self.tabs[tabs_ix], tabs_ix)
-        self.processes.append(proc)
+        proc = tasks.PythonPrimesTask(self, self.tabs[tabs_ix], tabs_ix)
+        self.tabs[tabs_ix] = self.tabs[tabs_ix]._replace(qprocess=proc)
 
     def toggle_paused(self):
         self.paused = not self.paused
@@ -158,9 +168,12 @@ class MainWnd(QtGui.QMainWindow):
         return "\n".join( [y for y in x if filter in y.lower()] )
     
     def write_process_output(self, process, finish, line_flush, tabs_ix):
+        if self.proc_terminated:
+            return
         self.text_change_mutex.acquire()
         try:
             t = str( process.readAllStandardOutput() )
+            t += str( process.readAllStandardError() )
             if finish:
                 t = t + "\n" + "Process exit-code = {}".format(process.exitCode())
             old = self.tabs[tabs_ix]
@@ -171,3 +184,28 @@ class MainWnd(QtGui.QMainWindow):
                 old.edit.setText( self.apply_filter(newText, self.filter) )
         finally:
             self.text_change_mutex.release()
+
+    def warned_close(self):        
+        def warn_fn():
+            res = QtGui.QMessageBox.warning(self, "Closing",
+                "Processes are still running - do you want to quit?",
+                QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
+            if res==QtGui.QMessageBox.Ok:
+                for y in self.tabs:
+                    if x.qprocess:
+                        x.qprocess.kill()
+                return self.close()
+        
+        if not self.tabs or len(self.tabs)==0:
+            return self.close()
+        for x in self.tabs:
+            print(x.qprocess.state())
+            if x.qprocess and x.qprocess.state()!=QtCore.QProcess.NotRunning:
+                return warn_fn()
+                
+        self.proc_terminated = True
+        for x in self.tabs:
+            proc = x.qprocess
+            if proc and proc.state()!=QtCore.QProcess.NotRunning:
+                print("Killing {}", proc)
+                proc.terminate()
