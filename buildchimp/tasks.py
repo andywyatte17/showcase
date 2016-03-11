@@ -33,17 +33,25 @@ def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
             "/p:Configuration={}".format(configuration)])
     return proc
 
-def PythonPrimesTask(parent, tabsType, tabs_ix):
+def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, pyargs=None):
     '''
        ...
     '''
     proc = QtCore.QProcess(parent)
-    line_flush = 10
     proc.readyReadStandardOutput.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
     proc.readyReadStandardError.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
     proc.finished.connect( lambda x : parent.write_process_output(proc, True, line_flush, tabs_ix) )
-    proc.start("python", ["-", str(10000)])
+    args = ["-"]
+    if pyargs:
+        args = args + pyargs
+    proc.start("python", args)
     proc.waitForStarted()
-    proc.write(_PY_SCRIPT_PRIMES_TO_N)
+    proc.write(pysource)
     proc.closeWriteChannel()
     return proc
+    
+def PythonPrimesTask(parent, tabsType, tabs_ix):
+    '''
+       ...
+    '''
+    return PythonTask(parent, _PY_SCRIPT_PRIMES_TO_N, 10, tabsType, tabs_ix, ["10000"])

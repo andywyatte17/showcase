@@ -9,6 +9,7 @@ from threading import Lock
 from PySide.QtGui import QStandardItem, QStandardItemModel
 import tasks
 from tabstype import *
+#import quickxpm
 
 class ScopeGuard:
     def __init__(self, exit_action):
@@ -84,20 +85,26 @@ class MainWnd(QtGui.QMainWindow):
         tv = self.treeView
         self.treeViewModel = QStandardItemModel()
         tvm = self.treeViewModel
-        self.initTreeViewModel(tvm)
+        tvm.setHorizontalHeaderLabels (["Build Tasks"])
         tv.setSizePolicy( QtGui.QSizePolicy( QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Expanding ) )
         tv.setModel(tvm)
         bottom.addWidget(tv)
+        self.enqueueTreeBuildTasks( [("Build CC Debug", "Build..."), ("Build CC Release", "Build...")] )
         return bottom
 
-    def initTreeViewModel(self, tvm):
-        parent = QStandardItem("A")
-        parent.appendRow([QStandardItem("B1")])
-        parent.appendRow([QStandardItem("B2")])
-        tvm.appendRow(parent)
-        parent = QStandardItem("C")
-        parent.appendRow([QStandardItem("D1")])
-        tvm.appendRow(parent)
+    def enqueueTreeBuildTasks(self, listOfTasksAndDescriptions):
+        '''
+           returns list( (taskLabel, parent QStandardItem) )
+        '''
+        tvm = self.treeViewModel
+        tvm.clear()
+        results = []
+        for label,description in listOfTasksAndDescriptions:
+            parent = QStandardItem(label)
+            parent.appendRow([QStandardItem(description)])
+            tvm.appendRow(parent)
+            results.append( (label, parent) )
+        return results
 
     def enqueue_tab(self, label):
         def StyledTextEdit():
@@ -204,7 +211,7 @@ class MainWnd(QtGui.QMainWindow):
             "Processes are still running - do you want to quit?",
             QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
         if res==QtGui.QMessageBox.Ok:
-            for y in self.tabs:
+            for x in self.tabs:
                 if x.qprocess:
                     x.qprocess.kill()
             return 
