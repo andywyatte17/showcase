@@ -45,7 +45,8 @@ class MainWnd(QtGui.QMainWindow):
 
         def StyledTextEdit():
             rv = QtGui.QTextEdit()
-            # rv.setStyle('{ font: "Courier New" }')
+            rv.setStyleSheet('font-family: "Andale Mono", "Courier New", "Lucida Console", Monaco, monospace;' +
+                             'font-size: 9px;')
             return rv
         
         self.tabs = [tabs_type(edit=StyledTextEdit(), label="1", textread="", lastlines=-1), \
@@ -70,9 +71,9 @@ class MainWnd(QtGui.QMainWindow):
 
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
-        fileMenu.addAction(exitAction)
         fileMenu.addAction(runAction)
         fileMenu.addAction(runActionPy)
+        fileMenu.addAction(exitAction)
 
         #toolbar = self.addToolBar('Exit')
         #toolbar.addAction(exitAction)
