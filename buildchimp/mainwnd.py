@@ -79,35 +79,42 @@ class MainWnd(QtGui.QMainWindow):
         #toolbar.addAction(exitAction)
         
         self.setGeometry(300, 300, 350, 250)
-        self.setWindowTitle('Main window')    
+        self.setWindowTitle('BuildChimp')    
         self.show()        
 
     def run(self):
         p = QtCore.QProcess(self)
         self.processes.append(p)
-        p.readyReadStandardOutput.connect( lambda: self.write_process_output(p, False, 100) )
-        p.finished.connect( lambda x : self.write_process_output(p, True, 100) )
+        tabs_ix, line_flush = (0, 10)
+        p.readyReadStandardOutput.connect( lambda: self.write_process_output(p, False, line_flush, tabs_ix) )
+        p.readyReadStandardError.connect( lambda: self.write_process_output(p, False, line_flush, tabs_ix) )
+        p.finished.connect( lambda x : self.write_process_output(p, True, line_flush, tabs_ix) )
         #p.start("find", ["/home/andy/dev"])
         #p.start("find", ["/home/andy"])
-        p.start("msbuild", [R"""D:\Projects\Vemnet068\7d\trunk\CommonCode\BuildAll\WinProj\BuildCommonCode.sln""", "/t:Build", "/p:Configuration=Release"])
+        p.start("msbuild",
+                [R"""D:\Projects\Vemnet068\7d\trunk\CommonCode\BuildAll\WinProj\BuildCommonCode.sln""",
+                "/t:Build",
+                "/p:Configuration=Release"])
 
     def run_python(self):
         p = QtCore.QProcess(self)
         self.processes.append(p)
-        p.readyReadStandardOutput.connect( lambda: self.write_process_output(p, False, 10) )
-        p.readyReadStandardError.connect( lambda: self.write_process_output(p, False, 10) )
-        p.finished.connect( lambda x : self.write_process_output(p, True, 10) )
+        tabs_ix, line_flush = (1, 10)
+        p.readyReadStandardOutput.connect( lambda: self.write_process_output(p, False, line_flush, tabs_ix) )
+        p.readyReadStandardError.connect( lambda: self.write_process_output(p, False, line_flush, tabs_ix) )
+        p.finished.connect( lambda x : self.write_process_output(p, True, line_flush, tabs_ix) )
         p.start("python", ["-", str(10000)])
         p.waitForStarted()
         p.write(PY_SCRIPT_PRIMES_TO_N)
         p.closeWriteChannel()
     
-    def write_process_output(self, process, finish, line_flush):
-        print("Process exit-code = {}".format(process.exitCode()))
+    def write_process_output(self, process, finish, line_flush, tabs_ix):
         t = str( process.readAllStandardOutput() )
-        old = self.tabs[0]
+        if finish:
+            t = t + "\n" + "Process exit-code = {}".format(process.exitCode())
+        old = self.tabs[tabs_ix]
         newText = old.textread + t
         nLines = newText.count("\n") / line_flush
-        self.tabs[0] = tabs_type(edit=old.edit, label=old.label, textread=newText, lastlines=nLines)
+        self.tabs[tabs_ix] = old._replace(textread=newText, lastlines=nLines)
         if old.lastlines != nLines or finish:
-            old[0].append( t )
+            old.edit.append( t )
