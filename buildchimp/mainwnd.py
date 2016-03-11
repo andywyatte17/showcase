@@ -5,10 +5,11 @@ from PySide import QtCore
 from PySide.QtCore import QProcess
 from PySide.QtCore import Qt
 from test_scripts import PY_SCRIPT_PRIMES_TO_N
-from threading import Lock
+from threading import Lock, Thread
 from PySide.QtGui import QStandardItem, QStandardItemModel
 import tasks
 from tabstype import *
+import taskmanager
 #import quickxpm
 
 class ScopeGuard:
@@ -44,6 +45,8 @@ class MainWnd(QtGui.QMainWindow):
         self.paused = False
         self.tabCtrl = None
         self.proc_terminated = False
+        self.taskManager = None
+        self.threads = []
         self.initUI()
         RestoreGeom(self)
 
@@ -127,6 +130,7 @@ class MainWnd(QtGui.QMainWindow):
 
         actions = []
         for label, cut, action_fn in (
+                                     ("Open YAML task file...", "Ctrl+O", self.open_yaml_task),
                                      ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
                                      ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
                                      ("Python Primes", "Ctrl+3", self.run_python),
@@ -215,7 +219,14 @@ class MainWnd(QtGui.QMainWindow):
                 if x.qprocess:
                     x.qprocess.kill()
             return 
-
+            
+    def open_yaml_task(self):
+        file = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")
+        if file:
+            self.taskManager = taskmanager.TaskManager( open(file[0]).read(), self )
+            thread = Thread(target = self.taskManager.run())
+            thread.start()
+          
     def closeEvent(self, event):
         SaveGeom(self)
         print("event={}".format(event))

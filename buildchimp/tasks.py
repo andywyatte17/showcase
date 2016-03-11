@@ -2,6 +2,7 @@
 
 from PySide import QtCore
 from tabstype import TabsType
+from PySide.QtCore import QTemporaryFile
 
 _PY_SCRIPT_PRIMES_TO_N = R'''
 import sys
@@ -17,25 +18,34 @@ while p <= n:
 print("Done")
 '''
 
-def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
+def WinCommandTask(parent, cmd_source, tabsType, tabs_ix):
     '''
-        tabsType is 'TabsType' - edit/label/textread/lastlines
-        ...
+       Launch a task switch is effectively a windows bat file.
     '''
+    f = QTemporaryFile()
+    f.setFileTemplate( f.fileTemplate() + ".bat" )
+    f.open()
+    f.write(cmd_source)
+    f.flush()
+    f.close()
+    f.setAutoRemove(False)
     proc = QtCore.QProcess(parent)
     line_flush = 10
     proc.readyReadStandardOutput.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
     proc.readyReadStandardError.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
     proc.finished.connect( lambda x : parent.write_process_output(proc, True, line_flush, tabs_ix) )
-    proc.start("msbuild",
-            [sln,
-            "/t:Rebuild",
-            "/p:Configuration={}".format(configuration)])
+    proc.start("cmd.exe", ["/c", f.fileName()])
     return proc
 
+    
+def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
+    src = R'''msbuild "{}" /t:Rebuild /p:Configuration="{}"'''.format(sln, configuration)
+    return WinCommandTask(parent, src, tabsType, tabs_ix)
+    
+    
 def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, pyargs=None):
     '''
-       ...
+       Launch a task based on some python source code.
     '''
     proc = QtCore.QProcess(parent)
     proc.readyReadStandardOutput.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
@@ -49,6 +59,7 @@ def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, pyargs=None):
     proc.write(pysource)
     proc.closeWriteChannel()
     return proc
+    
     
 def PythonPrimesTask(parent, tabsType, tabs_ix):
     '''
