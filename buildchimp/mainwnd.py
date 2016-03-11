@@ -11,13 +11,27 @@ import tasks
 from tabstype import *
 
 class ScopeGuard:
-    def __init__(self, action):
-        self.action = action
+    def __init__(self, exit_action):
+        self.exit_action = exit_action
     def __enter__(self):
         return self
     def __exit__(self, x_type, x_value, x_traceback ):
-        self.action()
+        self.exit_action()
 
+def RestoreGeom(some_obj):
+    some_obj.settings = QtCore.QSettings("net.ghuisoft", "buildchimp")
+    g = some_obj.settings.value("geometry")
+    ws = None
+    if g:
+        ws = some_obj.settings.value("windowState")
+    if g and ws:
+        some_obj.restoreGeometry(g)
+        some_obj.restoreState(ws)
+
+def SaveGeom(some_obj):
+    some_obj.settings.setValue("geometry", some_obj.saveGeometry())
+    some_obj.settings.setValue("windowState", some_obj.saveState())
+        
 class MainWnd(QtGui.QMainWindow):
     
     def __init__(self):
@@ -30,6 +44,7 @@ class MainWnd(QtGui.QMainWindow):
         self.tabCtrl = None
         self.proc_terminated = False
         self.initUI()
+        RestoreGeom(self)
 
     def initUI(self):
         widget = QtGui.QWidget()
@@ -108,7 +123,7 @@ class MainWnd(QtGui.QMainWindow):
                                      ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
                                      ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
                                      ("Python Primes", "Ctrl+3", self.run_python),
-                                     ("Exit", "Ctrl+Q", self.warned_close)
+                                     ("Exit", "Ctrl+Q", self.close)
                                    ):
             action = QtGui.QAction(label, self)
             action.setShortcut(cut)
@@ -153,14 +168,12 @@ class MainWnd(QtGui.QMainWindow):
         
     def filter_fn(self, filter):
         self.text_change_mutex.acquire()
-        try:
+        with ScopeGuard(self.text_change_mutex.release) as sg:
             self.filter = filter
             for x in self.tabs:
                 edit = x.edit
                 text = x.textread
                 edit.setText( self.apply_filter(text, self.filter) )
-        finally:
-            self.text_change_mutex.release()
 
     def apply_filter(self, text, filter):
         if not filter: return text
@@ -171,7 +184,7 @@ class MainWnd(QtGui.QMainWindow):
         if self.proc_terminated:
             return
         self.text_change_mutex.acquire()
-        try:
+        with ScopeGuard(self.text_change_mutex.release) as sg:
             t = str( process.readAllStandardOutput() )
             t += str( process.readAllStandardError() )
             if finish:
@@ -182,26 +195,30 @@ class MainWnd(QtGui.QMainWindow):
             self.tabs[tabs_ix] = old._replace(textread=newText, lastlines=nLines)
             if not self.paused and old.lastlines != nLines or finish:
                 old.edit.setText( self.apply_filter(newText, self.filter) )
-        finally:
-            self.text_change_mutex.release()
 
-    def warned_close(self):        
-        def warn_fn():
-            res = QtGui.QMessageBox.warning(self, "Closing",
-                "Processes are still running - do you want to quit?",
-                QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
-            if res==QtGui.QMessageBox.Ok:
-                for y in self.tabs:
-                    if x.qprocess:
-                        x.qprocess.kill()
-                return self.close()
-        
+    def warn_fn(self):
+        '''
+            Yes = user clicked 'Ok', No - user clicked 'Cancel'
+        '''
+        res = QtGui.QMessageBox.warning(self, "Closing",
+            "Processes are still running - do you want to quit?",
+            QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
+        if res==QtGui.QMessageBox.Ok:
+            for y in self.tabs:
+                if x.qprocess:
+                    x.qprocess.kill()
+            return 
+
+    def closeEvent(self, event):
+        SaveGeom(self)
+        print("event={}".format(event))
+    
         if not self.tabs or len(self.tabs)==0:
             return self.close()
         for x in self.tabs:
             print(x.qprocess.state())
             if x.qprocess and x.qprocess.state()!=QtCore.QProcess.NotRunning:
-                return warn_fn()
+                return self.warn_fn()
                 
         self.proc_terminated = True
         for x in self.tabs:
