@@ -11,6 +11,7 @@ import tasks
 from tabstype import *
 import taskmanager
 from lib import ScopeGuard
+from taskmanager import Color
 #import quickxpm
 
 def RestoreGeom(some_obj):
@@ -74,9 +75,9 @@ class MainWnd(QtGui.QMainWindow):
             top.addWidget( btn )
 
         return top
-        
-    def makeBottomLayout(self):
-        bottom = QtGui.QHBoxLayout()
+
+    def makeBottomLeftLayout(self):
+        bottom_left = QtGui.QVBoxLayout()
         self.treeView = QtGui.QTreeView()
         tv = self.treeView
         self.treeViewModel = QStandardItemModel()
@@ -84,8 +85,32 @@ class MainWnd(QtGui.QMainWindow):
         tvm.setHorizontalHeaderLabels (["Build Tasks"])
         tv.setSizePolicy( QtGui.QSizePolicy( QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Expanding ) )
         tv.setModel(tvm)
-        bottom.addWidget(tv)
-        self.enqueueTreeBuildTasks( [("Build CC Debug", "Build..."), ("Build CC Release", "Build...")] )
+        bottom_left.addWidget(tv)
+        color_key = QtGui.QTextEdit()
+        color_key.setFrameStyle( QtGui.QFrame.NoFrame )
+        color_key.setReadOnly(True)
+        color_key.setHtml('''
+<b>Key:</b>
+<p>
+<ul>
+  <li><span style="color:{blue}">Blue Items - Task is completed.</span></li>
+  <li><span style="color:{gray}">Gray Items - Optional task is disabled.</span></li>
+  <li><span style="color:{green}">Green Items - Task is running.</span></li>
+  <li><span style="color:{black}">Black Items - Task is still to be run.</span></li>
+</ul>
+</p>
+        '''.format(red=Color().Red().htmlCol, black=Color().Black().htmlCol, 
+                   gray=Color().Gray().htmlCol, green=Color().Green().htmlCol,
+                   blue=Color().Blue().htmlCol))
+        color_key.setSizePolicy( QtGui.QSizePolicy( QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed ) )
+        color_key.setFixedHeight(100)
+        bottom_left.addWidget(color_key)
+        return bottom_left
+        
+    def makeBottomLayout(self):
+        bottom = QtGui.QHBoxLayout()
+        bottom.addLayout(self.makeBottomLeftLayout())
+        # self.enqueueTreeBuildTasks( [("Build CC Debug", "Build..."), ("Build CC Release", "Build...")] )
         return bottom
 
     def enqueueTreeBuildTasks(self, listOfTasksAndDescriptions):
@@ -94,6 +119,7 @@ class MainWnd(QtGui.QMainWindow):
         '''
         tvm = self.treeViewModel
         tvm.clear()
+        tvm.setHorizontalHeaderLabels (["Build Tasks"])
         results = []
         for label,description in listOfTasksAndDescriptions:
             parent = QStandardItem(label)
@@ -127,6 +153,7 @@ class MainWnd(QtGui.QMainWindow):
         actions = []
         SEPARATOR = "separator"
         for x in ( ("Open YAML task file...", "Ctrl+O", self.open_yaml_task),
+                    ("Run YAML tasks", "Ctrl+R", self.run_yaml),
                     ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
                     ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
                     ("Python Primes", "Ctrl+3", self.run_python),
@@ -227,6 +254,12 @@ class MainWnd(QtGui.QMainWindow):
         file = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")
         if file:
             self.taskManager = taskmanager.TaskManager( open(file[0]).read(), self )
+            
+    def run_yaml(self):
+        if self.taskManager:
+            self.taskManager.run_loop_init()
+            self.tabs = []
+            self.tabCtrl.clear()
             self.taskManager.run_loop()
           
     def closeEvent(self, event):

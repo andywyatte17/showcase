@@ -22,9 +22,17 @@ def Finished(exitcode, parent, process, line_flush, tabs_ix, finished_action):
     print("FinishTask")
     parent.write_process_output(process, True, line_flush, tabs_ix)
     finished_action(exitcode)
-    
-def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_action):
+
+def ApplyEnvironment(qprocess, environment):
+    if environment:
+        env = QtCore.QProcessEnvironment.systemEnvironment()
+        for var,val in environment:
+            env.insert(var, val)
+        qprocess.setProcessEnvironment(env)
+
+def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_action, environment=None):
     '''
+       environment - list of tuples (EnvVarName, Value)
        Launch a task switch is effectively a windows bat file.
     '''
     f = QTemporaryFile()
@@ -35,6 +43,7 @@ def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_a
     f.close()
     f.setAutoRemove(False)
     process = QtCore.QProcess(parent)
+    ApplyEnvironment(process, environment)
     process.readyReadStandardOutput.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
                                                   parent.write_process_output(process, False, line_flush, tabs_ix) )
     process.readyReadStandardError.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
@@ -45,17 +54,12 @@ def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_a
     process.start("cmd.exe", ["/c", f.fileName()])
     return process
 
-    
-def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
-    src = R'''msbuild "{}" /t:Rebuild /p:Configuration="{}"'''.format(sln, configuration)
-    return WinCommandTask(parent, src, tabsType, tabs_ix)
-    
-    
-def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, finished_action, pyargs=None):
+def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, finished_action, environment=None, pyargs=None):
     '''
        Launch a task based on some python source code.
     '''
     process = QtCore.QProcess(parent)
+    ApplyEnvironment(process, environment)
     process.readyReadStandardOutput.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
                                                   parent.write_process_output(process, False, line_flush, tabs_ix) )
     process.readyReadStandardError.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
@@ -72,7 +76,12 @@ def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, finished_action,
     process.closeWriteChannel()
     return process
     
+
+def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
+    src = R'''msbuild "{}" /t:Rebuild /p:Configuration="{}"'''.format(sln, configuration)
+    return WinCommandTask(parent, src, tabsType, tabs_ix)
     
+        
 def PythonPrimesTask(parent, tabsType, tabs_ix):
     '''
        ...
