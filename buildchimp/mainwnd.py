@@ -4,7 +4,6 @@ from PySide import QtGui
 from PySide import QtCore
 from PySide.QtCore import QProcess
 from PySide.QtCore import Qt
-from test_scripts import PY_SCRIPT_PRIMES_TO_N
 from threading import Lock, Thread
 from PySide.QtGui import QStandardItem, QStandardItemModel
 import tasks
@@ -12,6 +11,7 @@ from tabstype import *
 import taskmanager
 from lib import ScopeGuard
 from taskmanager import Color
+import time
 #import quickxpm
 
 def RestoreGeom(some_obj):
@@ -248,7 +248,8 @@ class MainWnd(QtGui.QMainWindow):
             for x in self.tabs:
                 if x.qprocess:
                     x.qprocess.kill()
-            return 
+            time.sleep(5)
+            return
             
     def open_yaml_task(self):
         file = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")

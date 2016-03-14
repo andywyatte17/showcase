@@ -1,0 +1,44 @@
+_magic_: buildchimp_project
+
+globals:
+    environment:
+        TruE4Src: /Users/andrewwyatt_s/Development/TruE4
+        xc_clean: "1"
+
+buildsteps:
+  - id: cmake_cc
+    title: Run CMake for CommonCode
+    description: ...
+    inline_script_sh: |
+        cd ${TruE4Src}/CommonCode/BuildAllCMake/build-OSX
+        cmake .. -G"Xcode" -DVSM_PLATFORM_OSX=1
+    optional: false
+    dependencies:
+
+  - id: cc_dbx
+    title: Rebuild CmnC Debug
+    description: Rebuild CommonCode in Debug mode for x86.
+    inline_script_sh: |
+        cd ${TruE4Src}/CommonCode/BuildAllCMake/build-OSX
+        pwd
+        if [ "${xc_clean}" -eq "1" ];
+          then xcodebuild clean -configuration Debug | xcpretty --no-utf
+        fi
+        xcodebuild -target install -configuration Debug | xcpretty --no-utf
+    optional: true
+    dependencies:
+      - cmake_cc
+
+  - id: cc_rlx
+    title: Rebuild CmnC Release
+    description: Rebuild CommonCode in Release mode for x86.
+    inline_script_sh: |
+        cd ${TruE4Src}/CommonCode/BuildAllCMake/build-OSX
+        pwd
+        if [ "${xc_clean}" -eq "1" ];
+          then xcodebuild clean -configuration Release | xcpretty --no-utf
+        fi
+        xcodebuild -target install -configuration Release | xcpretty --no-utf
+    optional: true
+    dependencies:
+      - cmake_cc

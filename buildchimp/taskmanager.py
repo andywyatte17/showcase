@@ -121,8 +121,15 @@ class TaskManager:
                               lambda exitcode, self=self, task_index=task_index : self.finished_task(task_index),
                               environment = self.environment)
             self.main_wnd.tabs[tab_ix] = self.main_wnd.tabs[tab_ix]._replace(qprocess=proc)
+
         elif "inline_script_sh" in task.dict:
-            pass # TODO: ...
+            tab_ix = self.main_wnd.enqueue_tab(task.dict["title"])
+            tt = self.main_wnd.tabs[tab_ix]
+            proc = BashCommandTask(self.main_wnd, task.dict["inline_script_sh"], 10, tt, tab_ix,
+                                  lambda exitcode, self=self, task_index=task_index : self.finished_task(task_index),
+                                  environment = self.environment)
+            self.main_wnd.tabs[tab_ix] = self.main_wnd.tabs[tab_ix]._replace(qprocess=proc)
+
         elif "inline_script_bat" in task.dict:
             tab_ix = self.main_wnd.enqueue_tab(task.dict["title"])
             tt = self.main_wnd.tabs[tab_ix]

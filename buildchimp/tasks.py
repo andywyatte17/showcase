@@ -54,6 +54,31 @@ def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_a
     process.start("cmd.exe", ["/c", f.fileName()])
     return process
 
+def BashCommandTask(parent, term_source, line_flush, tabsType, tabs_ix, finished_action, environment=None):
+    '''
+       environment - list of tuples (EnvVarName, Value)
+       Launch a task switch is effectively a windows bat file.
+    '''
+    f = QTemporaryFile()
+    f.setFileTemplate( f.fileTemplate() )
+    f.open()
+    f.write(term_source)
+    f.flush()
+    f.close()
+    f.setAutoRemove(False)
+    process = QtCore.QProcess(parent)
+    ApplyEnvironment(process, environment)
+    print(environment)
+    process.readyReadStandardOutput.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
+                                                  parent.write_process_output(process, False, line_flush, tabs_ix) )
+    process.readyReadStandardError.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
+                                                  parent.write_process_output(process, False, line_flush, tabs_ix) )
+    process.finished.connect( lambda exitcode, finished_action=finished_action, parent=parent, process=process,
+                                      line_flush=line_flush, tabs_ix=tabs_ix :
+                                          Finished(exitcode, parent, process, line_flush, tabs_ix, finished_action) )
+    process.start("bash", [f.fileName()])
+    return process
+
 def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, finished_action, environment=None, pyargs=None):
     '''
        Launch a task based on some python source code.
