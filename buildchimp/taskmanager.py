@@ -19,7 +19,7 @@ color_type = namedtuple("color_type", ["htmlCol", "qbrush"])
 
 tasks_tuple = namedtuple("tasks", ["dict", "status", "dependencies", "id",
                                    "timein", "timeend", "parent_tree_item", "is_optional",
-                                   "will_run_task"])
+                                   "will_run_task", "error_code"])
 
 class Color:
     def Black(self):
@@ -38,6 +38,7 @@ class Color:
         return color_type(htmlCol="#777",qbrush=QBrush(QColor.fromRgb(0x77,0x77,0x77)))
 
 def ForegroundForTask(task):
+    if task.status==DONE and task.error_code!=0: return Color().Red().qbrush
     if task.status==DONE: return Color().Blue().qbrush
     if not task.will_run_task : return Color().Gray().qbrush
     if task.status==RUNNING : return Color().Green().qbrush
@@ -88,7 +89,7 @@ class TaskManager:
                                             dependencies=step["dependencies"],
                                             id=step["id"], timein=None, timeend=None, parent_tree_item=None,
                                             is_optional=("optional" in step and step["optional"]),
-                                            will_run_task=True ) )
+                                            will_run_task=True, error_code=0 ) )
         # Add Tree Items
         tree_items = self.main_wnd.enqueueTreeBuildTasks( [(x.dict['title'], x.dict['description']) for x in self.tasks] )
         an_item = None
@@ -118,7 +119,7 @@ class TaskManager:
             tab_ix = self.main_wnd.enqueue_tab(task.dict["title"])
             tt = self.main_wnd.tabs[tab_ix]
             proc = PythonTask(self.main_wnd, task.dict["inline_script_py"], 10, tt, tab_ix,
-                              lambda exitcode, self=self, task_index=task_index : self.finished_task(task_index),
+                              lambda exitcode, self=self, task_index=task_index : self.finished_task(exitcode, task_index),
                               environment = self.environment)
             self.main_wnd.tabs[tab_ix] = self.main_wnd.tabs[tab_ix]._replace(qprocess=proc)
 
@@ -126,7 +127,7 @@ class TaskManager:
             tab_ix = self.main_wnd.enqueue_tab(task.dict["title"])
             tt = self.main_wnd.tabs[tab_ix]
             proc = BashCommandTask(self.main_wnd, task.dict["inline_script_sh"], 10, tt, tab_ix,
-                                  lambda exitcode, self=self, task_index=task_index : self.finished_task(task_index),
+                                  lambda exitcode, self=self, task_index=task_index : self.finished_task(exitcode, task_index),
                                   environment = self.environment)
             self.main_wnd.tabs[tab_ix] = self.main_wnd.tabs[tab_ix]._replace(qprocess=proc)
 
@@ -134,17 +135,22 @@ class TaskManager:
             tab_ix = self.main_wnd.enqueue_tab(task.dict["title"])
             tt = self.main_wnd.tabs[tab_ix]
             proc = WinCommandTask(self.main_wnd, task.dict["inline_script_bat"], 10, tt, tab_ix,
-                                  lambda exitcode, self=self, task_index=task_index : self.finished_task(task_index),
+                                  lambda exitcode, self=self, task_index=task_index : self.finished_task(exitcode, task_index),
                                   environment = self.environment)
             self.main_wnd.tabs[tab_ix] = self.main_wnd.tabs[tab_ix]._replace(qprocess=proc)
     
-    def finished_task(self, task_index):
+    def finished_task(self, exitcode, task_index):
         task = self.tasks[task_index]._replace(status=DONE, timeend=time.time())
+        if exitcode!=0:
+            task = task._replace(error_code = exitcode)
         self.tasks[task_index] = task
         time_delta = task.timeend-task.timein
-        task.parent_tree_item.appendRow( [QStandardItem("time: {:0>8}".format(dt.timedelta(seconds=time_delta)))] )
+        time_delta = dt.datetime.utcfromtimestamp(time_delta)
+        time_delta = "time: " + time_delta.strftime('%H:%M:%S')
+        task.parent_tree_item.appendRow( [QStandardItem(time_delta)] )
         task.parent_tree_item.setForeground( ForegroundForTask(task) )
-        self.run_loop()
+        if exitcode==0:
+            self.run_loop()
         
     def run_loop_init(self):
         for i in range(0, len(self.tasks)):

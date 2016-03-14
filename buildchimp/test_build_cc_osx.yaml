@@ -3,7 +3,10 @@ _magic_: buildchimp_project
 globals:
     environment:
         TruE4Src: /Users/andrewwyatt_s/Development/TruE4
-        xc_clean: "1"
+        xc_clean: "0"
+        xc_jobs: "-jobs 3"
+        xc_flags: "-PBXBuildsContinueAfterErrors=0"
+        #xc_flags: "-IDEBuildingContinueBuildingAfterErrors=NO"
 
 buildsteps:
   - id: cmake_cc
@@ -22,9 +25,9 @@ buildsteps:
         cd ${TruE4Src}/CommonCode/BuildAllCMake/build-OSX
         pwd
         if [ "${xc_clean}" -eq "1" ];
-          then xcodebuild clean -configuration Debug | xcpretty --no-utf
+          then xcodebuild ${xc_flags} clean -configuration Debug | xcpretty --no-utf
         fi
-        xcodebuild -target install -configuration Debug | xcpretty --no-utf
+        xcodebuild ${xc_flags} -target install -configuration Debug ${xc_jobs} | xcpretty --no-utf && exit ${PIPESTATUS[0]}
     optional: true
     dependencies:
       - cmake_cc
@@ -36,9 +39,9 @@ buildsteps:
         cd ${TruE4Src}/CommonCode/BuildAllCMake/build-OSX
         pwd
         if [ "${xc_clean}" -eq "1" ];
-          then xcodebuild clean -configuration Release | xcpretty --no-utf
+          then xcodebuild ${xc_flags} clean -configuration Release | xcpretty --no-utf
         fi
-        xcodebuild -target install -configuration Release | xcpretty --no-utf
+        xcodebuild ${xc_flags} -target install -configuration Release ${xc_jobs} | xcpretty --no-utf && exit ${PIPESTATUS[0]}
     optional: true
     dependencies:
       - cmake_cc
