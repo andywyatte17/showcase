@@ -1,0 +1,22 @@
+_magic_: buildchimp_project
+
+buildsteps:
+
+  - id: cc_dbx
+    title: Build CmnC Debug
+    description: Build (not rebuild) CommonCode in Debug mode for x86.
+    inline_script_bat: |
+        msbuild D:\\Projects\\Vemnet068\\7d\\trunk\\CommonCode\\BuildAll\\WinProj\\BuildCommonCode.sln ^
+                /t:Rebuild /p:Configuration=Debug
+    optional: false
+    dependencies:
+
+  - id: cc_rlx
+    title: Build CmnC Release
+    description: Build (not rebuild) CommonCode in Release mode for x86.
+    inline_script_bat: |
+        msbuild D:\\Projects\\Vemnet068\\7d\\trunk\\CommonCode\\BuildAll\\WinProj\\BuildCommonCode.sln ^
+                /t:Rebuild /p:Configuration=Release
+    optional: false
+    dependencies:
+      - cc_dbx

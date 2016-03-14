@@ -4,16 +4,30 @@ buildsteps:
 
   - id: fv
     name: FileVersions
+    title: Bump File Versions
     description: Run a script to bump file versions
     inline_script_py: |
-        import blah
-        print("blah")
+        import sys
+        n = 10000
+        print("Primes to {}".format(n))
+        p = 2
+        while p <= n:
+                for i in range(2, p):
+                        if p%i == 0:
+                                p=p+1 
+                print("%s" % p)
+                p=p+1
+        print("Done")
+    optional: true
     dependencies:
 
   - id: buildcc_dbx
     name: BuildCC-Debug
+    title: Echo Hey
     description: Build CommonCode in Debug mode.
-    inline_script_sh: |
-        echo hey
+    inline_script_bat: |
+        msbuild D:\\Projects\\Vemnet068\\7d\\trunk\\CommonCode\\BuildAll\\WinProj\\BuildCommonCode.sln ^
+                /t:Rebuild /p:Configuration=Debug
+    optional: true
     dependencies:
       - fv

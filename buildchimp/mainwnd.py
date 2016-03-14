@@ -10,15 +10,8 @@ from PySide.QtGui import QStandardItem, QStandardItemModel
 import tasks
 from tabstype import *
 import taskmanager
+from lib import ScopeGuard
 #import quickxpm
-
-class ScopeGuard:
-    def __init__(self, exit_action):
-        self.exit_action = exit_action
-    def __enter__(self):
-        return self
-    def __exit__(self, x_type, x_value, x_traceback ):
-        self.exit_action()
 
 def RestoreGeom(some_obj):
     some_obj.settings = QtCore.QSettings("net.ghuisoft", "buildchimp")
@@ -110,6 +103,9 @@ class MainWnd(QtGui.QMainWindow):
         return results
 
     def enqueue_tab(self, label):
+        '''
+           returns tab_ix - integer index of tab generated
+        '''
         def StyledTextEdit():
             rv = QtGui.QTextEdit()
             rv.setStyleSheet('font-family: "Andale Mono", "Courier New", "Lucida Console", Monaco, monospace;' +
@@ -129,17 +125,24 @@ class MainWnd(QtGui.QMainWindow):
         hb.addWidget(tabCtrl);
 
         actions = []
-        for label, cut, action_fn in (
-                                     ("Open YAML task file...", "Ctrl+O", self.open_yaml_task),
-                                     ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
-                                     ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
-                                     ("Python Primes", "Ctrl+3", self.run_python),
-                                     ("Exit", "Ctrl+Q", self.close)
-                                   ):
-            action = QtGui.QAction(label, self)
-            action.setShortcut(cut)
-            action.triggered.connect(action_fn)
-            actions.append(action)
+        SEPARATOR = "separator"
+        for x in ( ("Open YAML task file...", "Ctrl+O", self.open_yaml_task),
+                    ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
+                    ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
+                    ("Python Primes", "Ctrl+3", self.run_python),
+                    SEPARATOR,
+                    ("Exit", "Ctrl+Q", self.close)
+                  ):
+            if x==SEPARATOR:
+                action = QtGui.QAction("", self)
+                action.setSeparator(True)
+                actions.append(action)
+            else:
+                label, cut, action_fn = x
+                action = QtGui.QAction(label, self)
+                action.setShortcut(cut)
+                action.triggered.connect(action_fn)
+                actions.append(action)
         
         sb = self.statusBar()
 
@@ -224,8 +227,7 @@ class MainWnd(QtGui.QMainWindow):
         file = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")
         if file:
             self.taskManager = taskmanager.TaskManager( open(file[0]).read(), self )
-            thread = Thread(target = self.taskManager.run())
-            thread.start()
+            self.taskManager.run_loop()
           
     def closeEvent(self, event):
         SaveGeom(self)

@@ -18,7 +18,12 @@ while p <= n:
 print("Done")
 '''
 
-def WinCommandTask(parent, cmd_source, tabsType, tabs_ix):
+def Finished(exitcode, parent, process, line_flush, tabs_ix, finished_action):
+    print("FinishTask")
+    parent.write_process_output(process, True, line_flush, tabs_ix)
+    finished_action(exitcode)
+    
+def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_action):
     '''
        Launch a task switch is effectively a windows bat file.
     '''
@@ -29,13 +34,16 @@ def WinCommandTask(parent, cmd_source, tabsType, tabs_ix):
     f.flush()
     f.close()
     f.setAutoRemove(False)
-    proc = QtCore.QProcess(parent)
-    line_flush = 10
-    proc.readyReadStandardOutput.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
-    proc.readyReadStandardError.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
-    proc.finished.connect( lambda x : parent.write_process_output(proc, True, line_flush, tabs_ix) )
-    proc.start("cmd.exe", ["/c", f.fileName()])
-    return proc
+    process = QtCore.QProcess(parent)
+    process.readyReadStandardOutput.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
+                                                  parent.write_process_output(process, False, line_flush, tabs_ix) )
+    process.readyReadStandardError.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
+                                                  parent.write_process_output(process, False, line_flush, tabs_ix) )
+    process.finished.connect( lambda exitcode, finished_action=finished_action, parent=parent, process=process,
+                                      line_flush=line_flush, tabs_ix=tabs_ix :
+                                          Finished(exitcode, parent, process, line_flush, tabs_ix, finished_action) )
+    process.start("cmd.exe", ["/c", f.fileName()])
+    return process
 
     
 def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
@@ -43,22 +51,26 @@ def MsBuildTask(parent, tabsType, tabs_ix, sln, configuration):
     return WinCommandTask(parent, src, tabsType, tabs_ix)
     
     
-def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, pyargs=None):
+def PythonTask(parent, pysource, line_flush, tabsType, tabs_ix, finished_action, pyargs=None):
     '''
        Launch a task based on some python source code.
     '''
-    proc = QtCore.QProcess(parent)
-    proc.readyReadStandardOutput.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
-    proc.readyReadStandardError.connect( lambda: parent.write_process_output(proc, False, line_flush, tabs_ix) )
-    proc.finished.connect( lambda x : parent.write_process_output(proc, True, line_flush, tabs_ix) )
+    process = QtCore.QProcess(parent)
+    process.readyReadStandardOutput.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
+                                                  parent.write_process_output(process, False, line_flush, tabs_ix) )
+    process.readyReadStandardError.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
+                                                  parent.write_process_output(process, False, line_flush, tabs_ix) )
+    process.finished.connect( lambda exitcode, finished_action=finished_action, parent=parent, process=process,
+                                      line_flush=line_flush, tabs_ix=tabs_ix :
+                                          Finished(exitcode, parent, process, line_flush, tabs_ix, finished_action) )
     args = ["-"]
     if pyargs:
         args = args + pyargs
-    proc.start("python", args)
-    proc.waitForStarted()
-    proc.write(pysource)
-    proc.closeWriteChannel()
-    return proc
+    process.start("python", args)
+    process.waitForStarted()
+    process.write(pysource)
+    process.closeWriteChannel()
+    return process
     
     
 def PythonPrimesTask(parent, tabsType, tabs_ix):
