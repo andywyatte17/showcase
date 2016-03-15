@@ -253,8 +253,11 @@ class MainWnd(QtGui.QMainWindow):
             QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
         if res==QtGui.QMessageBox.Ok:
             for x in self.tabs:
-                if x.qprocess:
-                    x.qprocess.kill()
+                qp = x.qprocess
+                if qp:
+                    qp.terminate()
+                    if not qp.waitForFinished(msecs=10000):
+                        qp.kill()
             time.sleep(5)
             return
             
