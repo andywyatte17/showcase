@@ -1,5 +1,7 @@
 #!/bin/python
 
+from PySide import QtCore
+
 class ScopeGuard:
     '''
     ScopeGuard / ScopeExit-like object - use keyword 'with' to ensure a method is called at scope
@@ -31,3 +33,23 @@ class Enum(object):
     def __getattr__(self, name):
             return self.tupleList.index(name)
             
+def RestoreGeom(q_main_window):
+    '''
+        Restore the location of a QMainWindow object.
+    '''
+    q_main_window.settings = QtCore.QSettings("net.ghuisoft", "buildchimp")
+    g = q_main_window.settings.value("geometry")
+    ws = None
+    if g:
+        ws = q_main_window.settings.value("windowState")
+    if g and ws:
+        q_main_window.restoreGeometry(g)
+        q_main_window.restoreState(ws)
+
+def SaveGeom(q_main_window):
+    '''
+        Save the location of a QMainWindow object.
+    '''
+    q_main_window.settings.setValue("geometry", q_main_window.saveGeometry())
+    q_main_window.settings.setValue("windowState", q_main_window.saveState())
+        

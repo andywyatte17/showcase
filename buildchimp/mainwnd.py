@@ -9,25 +9,11 @@ from PySide.QtGui import QStandardItem, QStandardItemModel
 import tasks
 from tabstype import *
 import taskmanager
-from lib import ScopeGuard
+from lib import *
 from taskmanager import Color
 import time
-#import quickxpm
+import config
 
-def RestoreGeom(some_obj):
-    some_obj.settings = QtCore.QSettings("net.ghuisoft", "buildchimp")
-    g = some_obj.settings.value("geometry")
-    ws = None
-    if g:
-        ws = some_obj.settings.value("windowState")
-    if g and ws:
-        some_obj.restoreGeometry(g)
-        some_obj.restoreState(ws)
-
-def SaveGeom(some_obj):
-    some_obj.settings.setValue("geometry", some_obj.saveGeometry())
-    some_obj.settings.setValue("windowState", some_obj.saveState())
-        
 class MainWnd(QtGui.QMainWindow):
     
     def __init__(self):
@@ -41,6 +27,7 @@ class MainWnd(QtGui.QMainWindow):
         self.proc_terminated = False
         self.taskManager = None
         self.threads = []
+        self.filter_model = None
         self.initUI()
         RestoreGeom(self)
 
@@ -64,16 +51,28 @@ class MainWnd(QtGui.QMainWindow):
         btn.setCheckable(True)
         btn.pressed.connect( self.toggle_paused )
         top.addWidget( btn )
-        
-        for label,str in ( ("error(s)","error(s)"), ("warning(s)","warning(s)"),
-                            ("building","building"), (" vs warning ", "warning "),
-                            ("{}",None) ):
-            btn = QtGui.QPushButton(label)
-            btn.setMaximumWidth(100)
-            btn.setMaximumHeight(30)
-            btn.released.connect( lambda self=self, str=str: self.filter_fn(str) )
-            top.addWidget( btn )
 
+        btn = QtGui.QPushButton("Run")
+        btn.pressed.connect( self.run_yaml )
+        top.addWidget( btn )
+
+        top.addWidget( QtGui.QLabel("Filters:") )
+        
+        model = QStandardItemModel()
+        combo = QtGui.QComboBox()
+        combo.setModel(model)
+        self.filter_model = model
+
+        ix = 0
+        for label,str in config.FILTERS:
+            item = QStandardItem(label)
+            model.appendRow(item)
+            combo.setItemData(ix, str)
+            ix += 1
+
+        combo.currentIndexChanged.connect( lambda ix, combo=combo : self.filter_combo_changed(ix, combo) )
+        top.addWidget(combo)
+        
         return top
 
     def makeBottomLeftLayout(self):
@@ -205,9 +204,14 @@ class MainWnd(QtGui.QMainWindow):
     def toggle_paused(self):
         self.paused = not self.paused
         if not self.paused:
-            self.filter_fn( self.filter )   # Bump a change in texts
+            self.filter_change_filter( self.filter )   # Bump a change in texts
         
-    def filter_fn(self, filter):
+    def filter_combo_changed(self, ix, combo):
+        data = combo.itemData(ix)
+        print("data={}".format(data))
+        self.filter_change_filter( data )
+
+    def filter_change_filter(self, filter):
         self.text_change_mutex.acquire()
         with ScopeGuard(self.text_change_mutex.release) as sg:
             self.filter = filter
@@ -217,9 +221,12 @@ class MainWnd(QtGui.QMainWindow):
                 edit.setText( self.apply_filter(text, self.filter) )
 
     def apply_filter(self, text, filter):
+        def colorize(str, filter):
+            # TODO: We can add <span...>...</span>... around text.
+            return str
         if not filter: return text
         x = text.split("\n")
-        return "\n".join( [y for y in x if filter in y.lower()] )
+        return "\n".join( [colorize(y,filter) for y in x if filter in y.lower()] )
     
     def write_process_output(self, process, finish, line_flush, tabs_ix):
         if self.proc_terminated:

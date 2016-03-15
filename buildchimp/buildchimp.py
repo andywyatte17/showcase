@@ -1,8 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-"""
+'''
+buildchimp.py
+    A program written using PySide (Qt 4) for automating build processes, ie small scripts
+    that build source copy and (possibly) copy files after etc. Configuration of these
+    build processes is made using YAML files.
+'''
 
 import sys
 import os
@@ -15,5 +19,9 @@ def main():
     sys.exit(app.exec_())
 
 if __name__ == '__main__':
-    # OSX DYLD_LIBRARY_PATH=~/Library/Python/2.7/lib/python/site-packages/PySide python buildchimp.py
+    '''
+      On OSX after python -m pip install --user PySide buildchimp.py gives an ImportError
+      exception. My fix:
+         ~/.bash_profile += export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/Library/Python/2.7/lib/python/site-packages/PySide
+    '''
     main()
