@@ -2,8 +2,10 @@
 
 import SimpleHTTPServer
 import SocketServer
-from threading import Thread, Lock
+from multiprocessing import Process, Queue
 import os, socket
+import copy
+import time
 
 _HTML = '''<html>
 <head>
@@ -22,57 +24,53 @@ Below is a screenshot of buildchimp. It will automatically refresh every 30 seco
 </body>
 </html>'''
 
+
+def serve(webserver, q_process_to_main):
+    os.system('mkdir -p "{}"'.format(webserver.basepath))
+    os.chdir(webserver.basepath)
+    open(webserver.basepath + "/index.html", "w").write(_HTML)
+    Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+    httpd = None
+    port = None
+    for PORT in range(8000,8100):
+        try:
+            httpd = SocketServer.TCPServer(("", PORT), Handler)
+            port = PORT
+            break
+        except SocketServer.socket.error as exc:
+            if exc.args[0] != 48: raise
+            print('Port {} is already in use, will try another.'.format(PORT))
+    if httpd:
+        q_process_to_main.put("Webserver - serving on {}:{}".format(
+               socket.gethostbyname(socket.gethostname()), port))
+        httpd.serve_forever()
+
+
 class Webserver():
     def __init__(self):
-        self.thread = None
-        self.httpd = None
-        self.pngPath = None
-        self.lock = Lock()
-        self.port = None
+        TMP_BC = "/tmp/buildchimp_web"
+        self.q_process_to_main = Queue()
+        self.basepath = TMP_BC
+        self.process = None
+        self.pngPath = TMP_BC + "/screenshot.png"
+        self.serving_string = False
 
     def __del__(self):
         self.stop()
 
     def __str__(self):
-        if self.httpd:
-            return "Webserver - serving on {}:{}".format(
-                   socket.gethostbyname(socket.gethostname()),
-                   self.port)
-        else:
-            return "Webserver - not serving."
-
-    def start_(self):
-        TMP_BC = "/tmp/buildchimp_web"
-        os.system('mkdir -p "{}"'.format(TMP_BC))
-        os.chdir(TMP_BC)
-        self.pngPath = TMP_BC + "/screenshot.png"
-        open(TMP_BC + "/index.html", "w").write(_HTML)
-        Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-        for PORT in range(8000,8100):
+        if not self.serving_string:
             try:
-                httpd = SocketServer.TCPServer(("", PORT), Handler)
-                self.httpd = httpd
-                self.port = PORT
-                break
-            except SocketServer.socket.error as exc:
-                if exc.args[0] != 48: raise
-                print('Port {} is already in use, will try another.'.format(PORT))
+                self.serving_string = self.q_process_to_main.get_nowait()
+            except: pass
+        return self.serving_string if self.servingstring else ""
 
     def start(self):
-        self.start_()
-        self.thread = Thread(target = lambda : self.httpd.serve_forever() )
-        self.thread.start()
-        print(self)
+        self_copy = copy.copy(self)
+        self.process = Process(target = serve, args = (self_copy, self.q_process_to_main) )
+        self.process.start()
+
 
     def stop(self):
-        self.lock.acquire()
-        try:
-            if self.thread and self.httpd:
-                self.httpd.shutdown()
-                self.thread.join()
-                self.httpd = None
-                self.thread = None
-            self.lock.release()
-        except:
-            self.lock.release()
-            raise
+        if self.process:
+            self.process.terminate()
