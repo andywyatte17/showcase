@@ -183,18 +183,15 @@ class MainWnd(QtGui.QMainWindow):
         SEPARATOR = "separator"
         OPEN_RECENT_PLACEHOLDER = "OpenRecentPlaceholder"
         for x in ( ("Open YAML task file...", "Ctrl+O", self.open_yaml_task),
+                    OPEN_RECENT_PLACEHOLDER,
+                    SEPARATOR,
                     ("Run YAML tasks", "Ctrl+R", self.run_yaml),
-                    ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
-                    ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
-                    ("Python Primes", "Ctrl+3", self.run_python),
                     SEPARATOR,
                     ("Start Webserver", "", self.start_webserver),
                     ("Stop Webserver", "", self.stop_webserver),
                     SEPARATOR,
-                    OPEN_RECENT_PLACEHOLDER,
-                    SEPARATOR,
                     ("Exit", "Ctrl+Q", self.close)
-                  ):
+                 ):
             if x==SEPARATOR:
                 action = QtGui.QAction("", self)
                 action.setSeparator(True)
@@ -223,26 +220,6 @@ class MainWnd(QtGui.QMainWindow):
         self.setGeometry(300, 300, 350, 250)
         self.setWindowTitle('BuildChimp')    
         self.show()        
-
-    def run_msbuild_cc_dbx(self):
-        sln = R"""D:\Projects\Vemnet068\7d\trunk\CommonCode\BuildAll\WinProj\BuildCommonCode.sln"""
-        tabs_ix = self.enqueue_tab("MsBuild CC Dbx")
-        self.tabs[tabs_ix] = ClearText(self.tabs[tabs_ix])
-        proc = tasks.MsBuildTask(self, self.tabs[tabs_ix], tabs_ix, sln, "Debug")
-        self.tabs[tabs_ix] = self.tabs[tabs_ix]._replace(qprocess=proc)
-
-    def run_msbuild_exes_dbx(self):
-        sln = R"""D:\Projects\Vemnet068\7d\trunk\Applications\AllExes\AllExes.sln"""
-        tabs_ix = self.enqueue_tab("MsBuild Exes Dbx")
-        self.tabs[tabs_ix] = ClearText(self.tabs[tabs_ix])
-        proc = tasks.MsBuildTask(self, self.tabs[tabs_ix], tabs_ix, sln, "Debug")
-        self.tabs[tabs_ix] = self.tabs[tabs_ix]._replace(qprocess=proc)
-        
-    def run_python(self):
-        tabs_ix = self.enqueue_tab("Python Primes")
-        self.tabs[tabs_ix] = ClearText(self.tabs[tabs_ix])
-        proc = tasks.PythonPrimesTask(self, self.tabs[tabs_ix], tabs_ix)
-        self.tabs[tabs_ix] = self.tabs[tabs_ix]._replace(qprocess=proc)
 
     def toggle_paused(self):
         self.paused = not self.paused
