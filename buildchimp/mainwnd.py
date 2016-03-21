@@ -13,6 +13,8 @@ from lib import *
 from taskmanager import Color
 import time
 import config
+import sys
+from webserver import Webserver
 
 class MainWnd(QtGui.QMainWindow):
     
@@ -31,7 +33,23 @@ class MainWnd(QtGui.QMainWindow):
         self.settings = QtCore.QSettings()
         self.openRecentMenu = None
         self.initUI()
+        self.qtimer = QtCore.QTimer()
+        self.qtimer.timeout.connect( self.make_screenshot )
+        self.qtimer.start( 5*1000 )
+        self.webserver = None
         RestoreGeom(self)
+
+    def make_screenshot(self):
+        if self.webserver:
+            pngPath = self.webserver.pngPath
+            if pngPath:
+                widget = self.centralWidget()
+                r = widget.rect()
+                pixmap = QtGui.QPixmap( r.size() )
+                widget.render( pixmap, QtCore.QPoint(), QtGui.QRegion(r) )
+                file = QtCore.QFile(pngPath)
+                file.open(QtCore.QIODevice.WriteOnly)
+                pixmap.save(file, "PNG")
 
     def initUI(self):
         widget = QtGui.QWidget()
@@ -114,9 +132,9 @@ class MainWnd(QtGui.QMainWindow):
         paths = self.settings.value("recentPaths", [])
         if paths:
             for path in paths:
-								action = QtGui.QAction(path, self)
-								action.triggered.connect(lambda self=self, path=path : self.open_yaml_from_path(path))
-								menu.addAction(action) 
+                action = QtGui.QAction(path, self)
+                action.triggered.connect(lambda self=self, path=path : self.open_yaml_from_path(path))
+                menu.addAction(action) 
 
     def makeBottomLayout(self):
         bottom = QtGui.QHBoxLayout()
@@ -169,6 +187,9 @@ class MainWnd(QtGui.QMainWindow):
                     ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
                     ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
                     ("Python Primes", "Ctrl+3", self.run_python),
+                    SEPARATOR,
+                    ("Start Webserver", "", self.start_webserver),
+                    ("Stop Webserver", "", self.stop_webserver),
                     SEPARATOR,
                     OPEN_RECENT_PLACEHOLDER,
                     SEPARATOR,
@@ -266,6 +287,9 @@ class MainWnd(QtGui.QMainWindow):
                 old.edit.setText( self.apply_filter(newText, self.filter) )
 
     def warn_fn(self):
+        '''
+            Returns True - user wants quit, False - user cancelled (doesn't want quit).
+        '''
         res = QtGui.QMessageBox.warning(self, "Closing",
             "Processes are still running - do you want to quit?",
             QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
@@ -277,7 +301,8 @@ class MainWnd(QtGui.QMainWindow):
                     if not qp.waitForFinished(msecs=10000):
                         qp.kill()
             time.sleep(5)
-            return
+            return True
+        return False
 
     def add_load_path(self, path):
         path_list = self.settings.value("recentPaths", [])
@@ -310,17 +335,29 @@ class MainWnd(QtGui.QMainWindow):
     def closeEvent(self, event):
         SaveGeom(self)
         self.settings.sync()
+        
+        stop_webserver = (lambda ws=self.webserver : ws.stop()) if self.webserver else lambda : None
 
         if not self.tabs or len(self.tabs)==0:
+            stop_webserver()
             return self.close()
         for x in self.tabs:
             print(x.qprocess.state())
             if x.qprocess and x.qprocess.state()!=QtCore.QProcess.NotRunning:
-                return self.warn_fn()
-                
-        self.proc_terminated = True
-        for x in self.tabs:
-            proc = x.qprocess
-            if proc and proc.state()!=QtCore.QProcess.NotRunning:
-                print("Killing {}", proc)
-                proc.terminate()
+                if not self.warn_fn(): return
+        stop_webserver()
+
+    def start_webserver(self):
+        if self.webserver: return
+        if sys.platform=="darwin":
+            try:
+                self.webserver = Webserver()
+                self.webserver.start()
+            except:
+                self.webserver = None
+
+    def stop_webserver(self):
+        if self.webserver:
+            self.webserver.stop()
+            self.webserver = None
+
