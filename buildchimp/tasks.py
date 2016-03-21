@@ -3,6 +3,7 @@
 from PySide import QtCore
 from tabstype import TabsType
 from PySide.QtCore import QTemporaryFile
+import os
 
 _PY_SCRIPT_PRIMES_TO_N = R'''
 import sys
@@ -24,11 +25,21 @@ def Finished(exitcode, parent, process, line_flush, tabs_ix, finished_action):
     finished_action(exitcode)
 
 def ApplyEnvironment(qprocess, environment):
-    if environment:
-        env = QtCore.QProcessEnvironment.systemEnvironment()
+    # Push environment into python environment - this should ensure that os.path.expandvars
+    #   works correctly when there are vars within vars
+    old_os_environ = os.environ
+    try:
         for var,val in environment:
-            env.insert(var, val)
-        qprocess.setProcessEnvironment(env)
+            os.environ[var] = val
+        if environment:
+            env = QtCore.QProcessEnvironment.systemEnvironment()
+            for var,val in environment:
+                env.insert(var, os.path.expandvars(val))
+            qprocess.setProcessEnvironment(env)
+    except:
+        pass
+    # Revert os.env
+    os.environ = old_os_environ
 
 def WinCommandTask(parent, cmd_source, line_flush, tabsType, tabs_ix, finished_action, environment=None):
     '''
@@ -68,7 +79,6 @@ def BashCommandTask(parent, term_source, line_flush, tabsType, tabs_ix, finished
     f.setAutoRemove(False)
     process = QtCore.QProcess(parent)
     ApplyEnvironment(process, environment)
-    print(environment)
     process.readyReadStandardOutput.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :
                                                   parent.write_process_output(process, False, line_flush, tabs_ix) )
     process.readyReadStandardError.connect( lambda parent=parent, process=process, line_flush=line_flush, tabs_ix=tabs_ix :

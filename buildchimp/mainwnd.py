@@ -225,7 +225,7 @@ class MainWnd(QtGui.QMainWindow):
             # TODO: We can add <span...>...</span>... around text.
             return str
         if not filter: return text
-        x = text.split("\n")
+        x = text.decode("utf-8").split("\n")
         return "\n".join( [colorize(y,filter) for y in x if filter in y.lower()] )
     
     def write_process_output(self, process, finish, line_flush, tabs_ix):
