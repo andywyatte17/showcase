@@ -37,7 +37,6 @@ def RestoreGeom(q_main_window):
     '''
         Restore the location of a QMainWindow object.
     '''
-    q_main_window.settings = QtCore.QSettings("net.ghuisoft", "buildchimp")
     g = q_main_window.settings.value("geometry")
     ws = None
     if g:

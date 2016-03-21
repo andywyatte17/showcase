@@ -14,6 +14,10 @@ import os
 def main():
     from mainwnd import MainWnd
     from PySide import QtGui
+    from PySide import QtCore
+    QtCore.QCoreApplication.setApplicationName("buildchimp")
+    QtCore.QCoreApplication.setOrganizationName("ghuisoft")
+    QtCore.QCoreApplication.setOrganizationDomain("ghuisoft.net")
     app = QtGui.QApplication(sys.argv)
     ex = MainWnd()
     sys.exit(app.exec_())

@@ -28,6 +28,8 @@ class MainWnd(QtGui.QMainWindow):
         self.taskManager = None
         self.threads = []
         self.filter_model = None
+        self.settings = QtCore.QSettings()
+        self.openRecentMenu = None
         self.initUI()
         RestoreGeom(self)
 
@@ -106,6 +108,16 @@ class MainWnd(QtGui.QMainWindow):
         bottom_left.addWidget(color_key)
         return bottom_left
         
+    def updateRecentFileList(self):
+        menu = self.openRecentMenu
+        menu.clear()
+        paths = self.settings.value("recentPaths", [])
+        if paths:
+            for path in paths:
+								action = QtGui.QAction(path, self)
+								action.triggered.connect(lambda self=self, path=path : self.open_yaml_from_path(path))
+								menu.addAction(action) 
+
     def makeBottomLayout(self):
         bottom = QtGui.QHBoxLayout()
         bottom.addLayout(self.makeBottomLeftLayout())
@@ -151,11 +163,14 @@ class MainWnd(QtGui.QMainWindow):
 
         actions = []
         SEPARATOR = "separator"
+        OPEN_RECENT_PLACEHOLDER = "OpenRecentPlaceholder"
         for x in ( ("Open YAML task file...", "Ctrl+O", self.open_yaml_task),
                     ("Run YAML tasks", "Ctrl+R", self.run_yaml),
                     ("MsBuild CommonCode - Debug", "Ctrl+1", self.run_msbuild_cc_dbx),
                     ("MsBuild AllExes - Debug", "Ctrl+2", self.run_msbuild_exes_dbx),
                     ("Python Primes", "Ctrl+3", self.run_python),
+                    SEPARATOR,
+                    OPEN_RECENT_PLACEHOLDER,
                     SEPARATOR,
                     ("Exit", "Ctrl+Q", self.close)
                   ):
@@ -163,6 +178,8 @@ class MainWnd(QtGui.QMainWindow):
                 action = QtGui.QAction("", self)
                 action.setSeparator(True)
                 actions.append(action)
+            elif x==OPEN_RECENT_PLACEHOLDER:
+                actions.append(OPEN_RECENT_PLACEHOLDER)
             else:
                 label, cut, action_fn = x
                 action = QtGui.QAction(label, self)
@@ -175,7 +192,12 @@ class MainWnd(QtGui.QMainWindow):
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         for act in actions:
-            fileMenu.addAction(act)
+            if act==OPEN_RECENT_PLACEHOLDER:
+                self.openRecentMenu = QtGui.QMenu(title="Open Recent")
+                fileMenu.addMenu(self.openRecentMenu)
+                self.updateRecentFileList()
+            else:
+                fileMenu.addAction(act)
         
         self.setGeometry(300, 300, 350, 250)
         self.setWindowTitle('BuildChimp')    
@@ -208,7 +230,6 @@ class MainWnd(QtGui.QMainWindow):
         
     def filter_combo_changed(self, ix, combo):
         data = combo.itemData(ix)
-        print("data={}".format(data))
         self.filter_change_filter( data )
 
     def filter_change_filter(self, filter):
@@ -245,9 +266,6 @@ class MainWnd(QtGui.QMainWindow):
                 old.edit.setText( self.apply_filter(newText, self.filter) )
 
     def warn_fn(self):
-        '''
-            Yes = user clicked 'Ok', No - user clicked 'Cancel'
-        '''
         res = QtGui.QMessageBox.warning(self, "Closing",
             "Processes are still running - do you want to quit?",
             QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
@@ -260,12 +278,28 @@ class MainWnd(QtGui.QMainWindow):
                         qp.kill()
             time.sleep(5)
             return
-            
+
+    def add_load_path(self, path):
+        path_list = self.settings.value("recentPaths", [])
+        path_list = [path] + path_list
+        def filter_dups_stable(seq):
+            seen = set()
+            seen_add = seen.add
+            return [x for x in seq if not (x in seen or seen_add(x))]
+        path_list = filter_dups_stable(path_list)
+        path_list_items = set(path_list)
+        self.settings.setValue("recentPaths", path_list)
+        self.updateRecentFileList()
+
     def open_yaml_task(self):
         file = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")
         if file:
-            self.taskManager = taskmanager.TaskManager( open(file[0]).read(), self )
+            self.open_yaml_from_path(file[0])
             
+    def open_yaml_from_path(self, path):
+        self.taskManager = taskmanager.TaskManager( open(path).read(), self )
+        self.add_load_path(path)
+
     def run_yaml(self):
         if self.taskManager:
             self.taskManager.run_loop_init()
@@ -275,8 +309,8 @@ class MainWnd(QtGui.QMainWindow):
           
     def closeEvent(self, event):
         SaveGeom(self)
-        print("event={}".format(event))
-    
+        self.settings.sync()
+
         if not self.tabs or len(self.tabs)==0:
             return self.close()
         for x in self.tabs:
