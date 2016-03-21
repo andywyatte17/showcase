@@ -3,7 +3,7 @@
 import SimpleHTTPServer
 import SocketServer
 from threading import Thread, Lock
-import os
+import os, socket
 
 _HTML = '''<html>
 <head>
@@ -28,9 +28,18 @@ class Webserver():
         self.httpd = None
         self.pngPath = None
         self.lock = Lock()
+        self.port = None
 
     def __del__(self):
         self.stop()
+
+    def __str__(self):
+        if self.httpd:
+            return "Webserver - serving on {}:{}".format(
+                   socket.gethostbyname(socket.gethostname()),
+                   self.port)
+        else:
+            return "Webserver - not serving."
 
     def start_(self):
         TMP_BC = "/tmp/buildchimp_web"
@@ -38,15 +47,22 @@ class Webserver():
         os.chdir(TMP_BC)
         self.pngPath = TMP_BC + "/screenshot.png"
         open(TMP_BC + "/index.html", "w").write(_HTML)
-        PORT = 8000
         Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-        httpd = SocketServer.TCPServer(("", PORT), Handler)
-        self.httpd = httpd
-        httpd.serve_forever()
+        for PORT in range(8000,8100):
+            try:
+                httpd = SocketServer.TCPServer(("", PORT), Handler)
+                self.httpd = httpd
+                self.port = PORT
+                break
+            except SocketServer.socket.error as exc:
+                if exc.args[0] != 48: raise
+                print('Port {} is already in use, will try another.'.format(PORT))
 
     def start(self):
-        self.thread = Thread(target = self.start_)
+        self.start_()
+        self.thread = Thread(target = lambda : self.httpd.serve_forever() )
         self.thread.start()
+        print(self)
 
     def stop(self):
         self.lock.acquire()
