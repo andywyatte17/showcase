@@ -76,6 +76,10 @@ class MainWnd(QtGui.QMainWindow):
         btn.pressed.connect( self.run_yaml )
         top.addWidget( btn )
 
+        btn = QtGui.QPushButton("Stop")
+        btn.pressed.connect( self.stop_yaml )
+        top.addWidget( btn )
+
         top.addWidget( QtGui.QLabel("Filters:") )
         
         model = QStandardItemModel()
@@ -186,6 +190,7 @@ class MainWnd(QtGui.QMainWindow):
                     OPEN_RECENT_PLACEHOLDER,
                     SEPARATOR,
                     ("Run YAML tasks", "Ctrl+R", self.run_yaml),
+                    ("Stop YAML tasks", "Ctrl+Shift+R", self.stop_yaml),
                     SEPARATOR,
                     ("Start Webserver", "", self.start_webserver),
                     ("Stop Webserver", "", self.stop_webserver),
@@ -271,13 +276,8 @@ class MainWnd(QtGui.QMainWindow):
             "Processes are still running - do you want to quit?",
             QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
         if res==QtGui.QMessageBox.Ok:
-            for x in self.tabs:
-                qp = x.qprocess
-                if qp:
-                    qp.terminate()
-                    if not qp.waitForFinished(msecs=10000):
-                        qp.kill()
-            time.sleep(5)
+            if self.taskmanager:
+                self.taskmanager.stop()
             return True
         return False
 
@@ -308,6 +308,10 @@ class MainWnd(QtGui.QMainWindow):
             self.tabs = []
             self.tabCtrl.clear()
             self.taskManager.run_loop()
+
+    def stop_yaml(self):
+        if self.taskManager:
+            self.taskManager.stop()
           
     def closeEvent(self, event):
         SaveGeom(self)

@@ -81,6 +81,7 @@ class TaskManager:
     def __init__(self, yaml_text, mainwnd):
         self.config_dict = yaml.load(yaml_text)
         self.environment = None
+        self.stopping = False
         if "globals" in self.config_dict:
             g = self.config_dict["globals"]
             if "environment" in g:
@@ -114,6 +115,7 @@ class TaskManager:
                 parent.setCheckState(QtCore.Qt.Checked)
         if an_item:
             an_item.model().itemChanged.connect( self.TreeItemChanged )
+        self.mainwnd.treeView.expandAll()
     
     def TreeItemChanged(self, dunno):
         for i in range(0, len(self.tasks)):
@@ -164,6 +166,7 @@ class TaskManager:
             self.run_loop()
         
     def run_loop_init(self):
+        self.stopping = False
         for i in range(0, len(self.tasks)):
             self.tasks[i] = self.tasks[i]._replace(status=NOT_STARTED)
             
@@ -171,8 +174,19 @@ class TaskManager:
         TASKS_BEGIN = -1
         if all_tasks_done(self.tasks):
             return
-        result = self.start_another_task_if_possible()
+        if not self.stopping:
+            result = self.start_another_task_if_possible()
     
+    def stop(self):
+        self.stopping = True
+        for tab_ix in range(0, len(self.mainwnd.tabs)):
+            qp = self.mainwnd.tabs[tab_ix].qprocess
+            if qp:
+                qp.terminate()
+                if not qp.waitForFinished(msecs=10000):
+                    qp.kill()
+            self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=None)
+
     def start_another_task_if_possible(self):
         # Count number of running tasks
         tasks_running = 0
