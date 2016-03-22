@@ -1,10 +1,18 @@
 ## buildchimp
 
-This is a program built using PySide (Python + Qt) that
+This is a program built using PySide (Python + Qt). The purpose is to enable a series of processes to be run, specified as bash or windows cmd scripts, with the output displayed in separate tabs. The scripts are specified in a single yaml configuration file.
 
----
+The original purpose of the program was to allow a build process to be described in file that can be stored in a version control system and shared and run by the members of the team.
 
-## TODO
+## Requirements (Python)
+
+* Python 2.7 with pip
+* pip > PySide
+* pip > yaml
+
+## TODO / Ideas
+
+Things still to do and ideas:
 
 * Recent File List
   * Remove item when an attempt to open a recent file fails.
@@ -16,3 +24,5 @@ This is a program built using PySide (Python + Qt) that
   * Uses:
     * Replace settings in the globals > environment area.
     * Another use might be to add additional *buildsteps* for special purposes. 
+* Tree View - default to all items in the tree expanded - this is the most useful way to have it.
+
