@@ -60,10 +60,11 @@ def is_checked(q_standard_item):
     return q_standard_item.checkState()==QtCore.Qt.Checked
     
 
-def can_task_be_started(nt, all_tasks):
+def can_task_be_started(task, all_tasks):
     # A task can be started if the task has all dependencies met
-    if nt.status!=NOT_STARTED: return False
-    for id in ([] if not nt.dependencies else nt.dependencies):
+    if task.status!=NOT_STARTED: return False
+    if not task.will_run_task : return False
+    for id in ([] if not task.dependencies else task.dependencies):
         for others in [x for x in all_tasks if x!=id]:
             if id==others.id and not DoneOrWontRun(others):
                 return False
@@ -193,6 +194,8 @@ class TaskManager:
         self.stopping = False
         for i in range(0, len(self.tasks)):
             self.tasks[i] = self.tasks[i]._replace(status=NOT_STARTED)
+            if not self.tasks[i].will_run_task:
+                self.tasks[i] = self.tasks[i]._replace(status=DONE)
             
     def run_loop(self):
         TASKS_BEGIN = -1
@@ -219,9 +222,8 @@ class TaskManager:
         
         # Try to find an unstarted task with dependencies fulfilled - if so, start it
         for i in range(0,len(self.tasks)):
-            task = self.tasks[i]
-            if can_task_be_started(task, self.tasks):
-                self.tasks[i] = task._replace(status=RUNNING)
+            if can_task_be_started(self.tasks[i], self.tasks):
+                self.tasks[i] = self.tasks[i]._replace(status=RUNNING)
                 self.launch_task(i)
                 return True
         if tasks_running==0:
