@@ -294,12 +294,21 @@ class MainWnd(QtGui.QMainWindow):
         self.updateRecentFileList()
 
     def open_yaml_task(self):
-        file = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")
-        if file:
-            self.open_yaml_from_path(file[0])
+        path, filter = QtGui.QFileDialog.getOpenFileName(filter="YAML buildchimp files (*.yaml)")
+        if path:
+            self.open_yaml_from_path(path)
             
     def open_yaml_from_path(self, path):
-        self.taskManager = taskmanager.TaskManager( open(path).read(), self )
+        path_user = None
+        if path[-5:]==".yaml":
+            path_user = path[:-5] + ".user.yaml"
+        yaml_user = None
+        try:
+            with open(path_user, "rb") as user_yaml_file:
+                if user_yaml_file: yaml_user = user_yaml_file.read()
+        except:
+            pass
+        self.taskManager = taskmanager.TaskManager( open(path, "rb").read(), yaml_user, self )
         self.add_load_path(path)
 
     def run_yaml(self):
@@ -323,7 +332,7 @@ class MainWnd(QtGui.QMainWindow):
             stop_webserver()
             return self.close()
         for x in self.tabs:
-            print(x.qprocess.state())
+            if x.qprocess: print(x.qprocess.state())
             if x.qprocess and x.qprocess.state()!=QtCore.QProcess.NotRunning:
                 if not self.warn_fn(): return
         stop_webserver()

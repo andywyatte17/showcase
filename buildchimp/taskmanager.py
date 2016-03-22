@@ -77,9 +77,33 @@ class TaskDependencyFault:
     pass
 
 
+def merge_two_dicts(a, b, level=0):
+    '''
+       merges dict-of-dicts 'b' into dict-of-dicts 'a'
+    '''
+    for kb in b:
+        vb = b[kb]
+        if isinstance(vb, dict):
+            if not kb in a:
+                a[kb] = {}
+            elif not isinstance(a[kb], dict):
+                raise Exception("dict / non-dict conflict.")
+            merge_two_dicts(a[kb], b[kb], level+1)
+        else:
+            if kb in a and isinstance(a[kb], dict):
+                raise Exception("dict / non-dict conflict.")
+            a[kb] = b[kb]
+    return a
+
+
 class TaskManager:
-    def __init__(self, yaml_text, mainwnd):
+    def __init__(self, yaml_text, yaml_user_text, mainwnd):
         self.config_dict = yaml.load(yaml_text)
+        config_user_dict = None
+        if yaml_user_text:
+            config_user_dict = yaml.load(yaml_user_text)
+        if config_user_dict:
+            self.config_dict = merge_two_dicts(self.config_dict, config_user_dict)
         self.environment = None
         self.stopping = False
         if "globals" in self.config_dict:
