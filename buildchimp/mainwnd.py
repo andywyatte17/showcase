@@ -21,6 +21,7 @@ class MainWnd(QtGui.QMainWindow):
     def __init__(self):
         super(MainWnd, self).__init__()
         self.tabs = []    # list of TabsType objects (namedtuples)
+        self.folder_for_reveal = None
         self.filter = None
         self.treeView, self.treeViewModel = None,None
         self.text_change_mutex = Lock()
@@ -192,6 +193,8 @@ class MainWnd(QtGui.QMainWindow):
                     ("Run YAML tasks", "Ctrl+R", self.run_yaml),
                     ("Stop YAML tasks", "Ctrl+Shift+R", self.stop_yaml),
                     SEPARATOR,
+                    ("Reveal in Finder / Explorer", "Ctrl+E", self.reveal_in_x),
+                    SEPARATOR,
                     ("Start Webserver", "", self.start_webserver),
                     ("Stop Webserver", "", self.stop_webserver),
                     SEPARATOR,
@@ -225,6 +228,9 @@ class MainWnd(QtGui.QMainWindow):
         self.setGeometry(300, 300, 350, 250)
         self.setWindowTitle('BuildChimp')    
         self.show()        
+
+    def reveal_in_x(self):
+        QtGui.QDesktopServices.openUrl(self.folder_for_reveal)
 
     def toggle_paused(self):
         self.paused = not self.paused
@@ -299,6 +305,7 @@ class MainWnd(QtGui.QMainWindow):
             self.open_yaml_from_path(path)
             
     def open_yaml_from_path(self, path):
+        self.folder_for_reveal = None
         path_user = None
         if path[-5:]==".yaml":
             path_user = path[:-5] + ".user.yaml"
@@ -310,6 +317,9 @@ class MainWnd(QtGui.QMainWindow):
             pass
         self.taskManager = taskmanager.TaskManager( open(path, "rb").read(), yaml_user, self )
         self.add_load_path(path)
+        qf = QtCore.QFileInfo(path)
+        self.folder_for_reveal = "file://" + qf.absoluteDir().absolutePath()
+        # print(self.folder_for_reveal)
 
     def run_yaml(self):
         if self.taskManager:
