@@ -41,10 +41,11 @@ def serve(webserver, q_process_to_main):
             if exc.args[0] != 48: raise
             print('Port {} is already in use, will try another.'.format(PORT))
     if httpd:
-        q_process_to_main.put("Webserver - serving on {}:{}".format(
+        q_process_to_main.put('Webserver - serving on <a href="{0}:{1}">{0}:{1}</a>'.format(
                socket.gethostbyname(socket.gethostname()), port))
         httpd.serve_forever()
-
+    else:
+        q_process_to_main.put("Webserver - couldn't start.")
 
 class Webserver():
     def __init__(self):
@@ -70,7 +71,13 @@ class Webserver():
         self.process = Process(target = serve, args = (self_copy, self.q_process_to_main) )
         self.process.start()
 
-
     def stop(self):
         if self.process:
             self.process.terminate()
+
+    def wait_on_msg(self, timeout=10):
+        try:
+            got = self.q_process_to_main.get(block=True, timeout=timeout)
+            return got
+        except:
+            return None

@@ -10,6 +10,8 @@ from  PySide.QtCore import QProcess
 import time
 import datetime as dt
 from PySide.QtGui import QStandardItem, QBrush, QColor
+from PySide import QtGui
+from PySide.QtCore import Qt
 
 NOT_STARTED=0
 RUNNING=1
@@ -160,7 +162,6 @@ class TaskManager:
             proc = PythonTask(self, self.tasks[task_index].dict["inline_script_py"], self.tasks[task_index],
                               environment = self.environment)
             self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
-
         elif "inline_script_sh" in self.tasks[task_index].dict:
             tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
             self.tasks[task_index] = self.tasks[task_index]._replace(tabs_ix=tab_ix, line_flush=10)
@@ -168,12 +169,24 @@ class TaskManager:
             proc = BashCommandTask(self, self.tasks[task_index].dict["inline_script_sh"], self.tasks[task_index],
                                   environment = self.environment)
             self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
-
         elif "inline_script_bat" in self.tasks[task_index].dict:
             tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
             self.tasks[task_index] = self.tasks[task_index]._replace(tabs_ix=tab_ix, line_flush=10)
             tt = self.mainwnd.tabs[tab_ix]
             proc = WinCommandTask(self, self.tasks[task_index].dict["inline_script_bat"], self.tasks[task_index],
+                                   environment = self.environment)
+            self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
+        elif "message" in self.tasks[task_index].dict:
+            tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
+            # Show the message
+            m = QtGui.QMessageBox(self.mainwnd)
+            m.setText(self.tasks[task_index].dict["message"])
+            m.setWindowModality(Qt.WindowModal)
+            m.exec_()
+            # ...
+            self.tasks[task_index] = self.tasks[task_index]._replace(tabs_ix=tab_ix, line_flush=10)
+            tt = self.mainwnd.tabs[tab_ix]
+            proc = PythonTask(self, "print('The user was shown the message.')", self.tasks[task_index],
                                    environment = self.environment)
             self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
     

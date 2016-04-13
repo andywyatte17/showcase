@@ -353,6 +353,12 @@ class MainWnd(QtGui.QMainWindow):
             try:
                 self.webserver = Webserver()
                 self.webserver.start()
+                msg = self.webserver.wait_on_msg()
+                if msg:
+                    m = QtGui.QMessageBox(self)
+                    m.setText(msg)
+                    m.setWindowModality(Qt.WindowModal)
+                    m.exec_()
             except:
                 self.webserver = None
 
