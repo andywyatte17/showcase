@@ -318,8 +318,8 @@ class MainWnd(QtGui.QMainWindow):
         self.taskManager = taskmanager.TaskManager( open(path, "rb").read(), yaml_user, self )
         self.add_load_path(path)
         qf = QtCore.QFileInfo(path)
-        self.folder_for_reveal = "file://" + qf.absoluteDir().absolutePath()
-        # print(self.folder_for_reveal)
+        self.folder_for_reveal = QtCore.QUrl.fromLocalFile(qf.absoluteDir().absolutePath())
+        #print(self.folder_for_reveal)
 
     def run_yaml(self):
         if self.taskManager:
