@@ -315,9 +315,9 @@ class MainWnd(QtGui.QMainWindow):
                 if user_yaml_file: yaml_user = user_yaml_file.read()
         except:
             pass
-        self.taskManager = taskmanager.TaskManager( open(path, "rb").read(), yaml_user, self )
-        self.add_load_path(path)
         qf = QtCore.QFileInfo(path)
+        self.taskManager = taskmanager.TaskManager( open(path, "rb").read(), yaml_user, self, yaml_path = qf.absoluteDir().absolutePath() )
+        self.add_load_path(path)
         self.folder_for_reveal = QtCore.QUrl.fromLocalFile(qf.absoluteDir().absolutePath())
         #print(self.folder_for_reveal)
 

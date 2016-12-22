@@ -100,7 +100,8 @@ def merge_two_dicts(a, b, level=0):
 
 
 class TaskManager:
-    def __init__(self, yaml_text, yaml_user_text, mainwnd):
+    def __init__(self, yaml_text, yaml_user_text, mainwnd, yaml_path):
+        self.yaml_path = yaml_path
         self.config_dict = yaml.load(yaml_text)
         config_user_dict = None
         if yaml_user_text:
@@ -155,6 +156,7 @@ class TaskManager:
     def launch_task(self, task_index):
         self.tasks[task_index].parent_tree_item.setForeground(ForegroundForTask(self.tasks[task_index]))
         self.tasks[task_index] = self.tasks[task_index]._replace(timein=time.time())
+        
         if "inline_script_py" in self.tasks[task_index].dict:
             tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
             self.tasks[task_index] = self.tasks[task_index]._replace(tabs_ix=tab_ix, line_flush=10)
@@ -162,6 +164,7 @@ class TaskManager:
             proc = PythonTask(self, self.tasks[task_index].dict["inline_script_py"], self.tasks[task_index],
                               environment = self.environment)
             self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
+            # ...
         elif "inline_script_sh" in self.tasks[task_index].dict:
             tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
             self.tasks[task_index] = self.tasks[task_index]._replace(tabs_ix=tab_ix, line_flush=10)
@@ -169,13 +172,15 @@ class TaskManager:
             proc = BashCommandTask(self, self.tasks[task_index].dict["inline_script_sh"], self.tasks[task_index],
                                   environment = self.environment)
             self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
+            # ...
         elif "inline_script_bat" in self.tasks[task_index].dict:
             tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
             self.tasks[task_index] = self.tasks[task_index]._replace(tabs_ix=tab_ix, line_flush=10)
             tt = self.mainwnd.tabs[tab_ix]
             proc = WinCommandTask(self, self.tasks[task_index].dict["inline_script_bat"], self.tasks[task_index],
-                                   environment = self.environment)
+                                   workingDir = self.yaml_path, environment = self.environment)
             self.mainwnd.tabs[tab_ix] = self.mainwnd.tabs[tab_ix]._replace(qprocess=proc)
+            # ...
         elif "message" in self.tasks[task_index].dict:
             tab_ix = self.mainwnd.enqueue_tab(self.tasks[task_index].dict["title"])
             # Show the message

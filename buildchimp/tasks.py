@@ -23,7 +23,7 @@ def ApplyEnvironment(qprocess, environment):
     os.environ = old_os_environ  # Revert os.environ
 
 
-def WinCommandTask(taskmanager, cmd_source, task, environment=None):
+def WinCommandTask(taskmanager, cmd_source, task, workingDir, environment=None):
     '''
        environment - list of tuples (EnvVarName, Value)
        Launch a task which is effectively a windows bat file.
@@ -36,6 +36,7 @@ def WinCommandTask(taskmanager, cmd_source, task, environment=None):
     f.close()
     f.setAutoRemove(False)
     process = QtCore.QProcess()
+    process.setWorkingDirectory( workingDir )
     ApplyEnvironment(process, environment)
     process.readyReadStandardOutput.connect( lambda taskmanager=taskmanager, process=process, task=task :
                                                  taskmanager.write_process_output(process, False, task) )
